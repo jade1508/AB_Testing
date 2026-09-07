@@ -131,17 +131,12 @@ snapshot it was computed from.
 | Metric | Control (gate_30) | Treatment (gate_40) |
 |---|---|---|
 | 7-Day Retention | 19.02% | 18.20% |
-| Sample size | 29,829 | 30,270 |
+| Sample size | 44,700 | 45,489 |
 
 - **SRM check:** p = 0.0086 → ✅ Passed
 - **Significance test:** p = 0.0016 → statistically significant
 - **Decision:** 🟡 **DO NOT SHIP** - statistically real difference, wrong
   direction (retention dropped)
-
-> Note: sample size in this run (60,099 total) is smaller than the full
-> public Cookie Cats dataset (~90,189 users). This reflects the current
-> `cookie_cats.csv` snapshot in this repo - re-verify against the latest
-> pipeline run before quoting these numbers elsewhere.
 
 ## 7. What this project is - and isn't
 
