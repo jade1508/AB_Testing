@@ -4,7 +4,7 @@ A fully automated A/B test analysis pipeline that scales to *any* number of
 experiments by adding a row to a spreadsheet - no new code required per test.
 Inspired by *Trustworthy Online Controlled Experiments* (Kohavi, Tang, Xu).
 
-The core idea: **AI writes the report. Code, not AI, makes the call.**
+The core idea: **AI writes the report. Code - not AI - makes the call.**
 Every ship / no-ship decision is computed deterministically in Python before
 the payload ever reaches the AI step; the AI's only job is to turn verified
 numbers into a clear, executive-ready narrative.
@@ -21,7 +21,25 @@ real experimentation platforms (Optimizely, GrowthBook).
 Adding a new A/B test to the pipeline now means adding one row to
 `registry.csv` - not writing new code.
 
-## 2. Experiment Registry (`registry.csv`)
+## 2. Two Ways to Run This
+
+This repo ships two entry-point scripts, kept side by side on purpose -
+they serve different situations, not two versions of the same thing:
+
+| | `pipeline_only_cookiecats.py` | `pipeline_expansion.py` |
+|---|---|---|
+| **Use case** | Ad hoc, one-off manual run of a single test | Scheduled, multi-experiment automation |
+| **How it runs** | Run manually, dataset and columns hardcoded in the script | GitHub Actions (`schedule` / `workflow_dispatch` / `repository_dispatch`) |
+| **Adding a new test** | Edit the script | Add a row to `registry.csv` |
+| **Control/Treatment** | Hardcoded in code | Explicit `control_label` in the registry, with a logged fallback |
+| **When to reach for it** | Quick exploratory check on a new dataset before it's worth registering | Any test that should run on a schedule or alongside others |
+
+In practice: `pipeline_only_cookiecats.py` is where this project started -
+useful for a fast, manual sanity check on one dataset. `pipeline_expansion.py`
+is the production path documented in the rest of this README, and the one
+wired into GitHub Actions.
+
+## 3. Experiment Registry (`registry.csv`)
 
 | Column | Purpose |
 |---|---|
@@ -48,7 +66,7 @@ pricing_test_02,Freemium Trial Checkout,E-commerce Pricing,pricing_data.csv,grou
 registry supports multiple experiments side by side, not as a second
 verified result. Only `cookie_cats_01` has been run end-to-end.
 
-## 3. Architecture
+## 4. Architecture (`pipeline_expansion.py`)
 
 ```
 registry.csv (Experiment Registry)
@@ -71,27 +89,27 @@ Router
    └──► Gmail - automated executive email
 ```
 
-## 4. Methodology
+## 5. Methodology
 
-### 4.1 Sample Ratio Mismatch (SRM) Check
+### 5.1 Sample Ratio Mismatch (SRM) Check
 Chi-square goodness-of-fit test, alert threshold **p < 0.001** (configurable
 per experiment via `srm_threshold`) - stricter than the conventional 0.05,
 because SRM signals a broken randomization process, not a business effect.
 If SRM fails, the decision is `INVALID_TEST_SRM` and no other result is
 trusted.
 
-### 4.2 Significance Test
+### 5.2 Significance Test
 - `binary` metrics (retention, conversion) → two-proportion Z-test
 - `continuous` metrics (revenue, AOV) → Welch's t-test
 
-### 4.3 Control/Treatment Resolution
+### 5.3 Control/Treatment Resolution
 The engine uses the `control_label` declared in the registry, not
 alphabetical order. If `control_label` is missing or doesn't match either
 group value in the dataset, it falls back to alphabetical sorting and logs
 a warning - so a misconfigured registry row is visible in the run logs
 rather than silently mislabeling groups.
 
-### 4.4 Decision Logic - computed in Python, not by the AI
+### 5.4 Decision Logic - computed in Python, not by the AI
 ```python
 if not srm_passed:
     decision = "INVALID_TEST_SRM"
@@ -103,12 +121,12 @@ else:
 This runs before the result is sent to Make.com. The AI Toolkit step only
 formats this pre-computed decision into an executive narrative.
 
-### 4.5 Audit Trail
+### 5.5 Audit Trail
 Each run stores a 12-character SHA-256 checksum of the input dataset
 (`dataset_checksum`), so any run can be traced back to the exact data
 snapshot it was computed from.
 
-## 5. Results (verified run - `cookie_cats_01`)
+## 6. Results (verified run - `cookie_cats_01`, via `pipeline_expansion.py`)
 
 | Metric | Control (gate_30) | Treatment (gate_40) |
 |---|---|---|
@@ -125,7 +143,7 @@ snapshot it was computed from.
 > `cookie_cats.csv` snapshot in this repo - re-verify against the latest
 > pipeline run before quoting these numbers elsewhere.
 
-## 6. What this project is - and isn't
+## 7. What this project is - and isn't
 
 - ✅ Config-driven: new experiments are added via `registry.csv`, not new code
 - ✅ Control/Treatment resolved via explicit config, with a logged fallback
@@ -136,8 +154,11 @@ snapshot it was computed from.
   not yet run (`status: skipped`)
 - ⚠️ Single-look statistical test - no sequential/peeking-safe monitoring yet
 - ⚠️ Status transitions (`pending` → `done`) are currently manual
+- ⚠️ `pipeline_only_cookiecats.py` is a manual, single-dataset script kept
+  for ad hoc use - it does not read the registry and is not part of the
+  automated flow
 
-## 7. Tech Stack
+## 8. Tech Stack
 
 - **Analysis:** Python (pandas, scipy, statsmodels, hashlib)
 - **Automation:** GitHub Actions (`schedule`, `workflow_dispatch`,
@@ -145,7 +166,7 @@ snapshot it was computed from.
   Google Sheets, Gmail)
 - **Config:** `registry.csv` (spreadsheet-based experiment registry)
 
-## 8. Credits
+## 9. Credits
 
 Inspired by *Trustworthy Online Controlled Experiments: A Practical Guide
 to A/B Testing* by Ron Kohavi, Diane Tang, and Ya Xu.
