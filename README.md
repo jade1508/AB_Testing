@@ -4,7 +4,7 @@ A fully automated A/B test analysis pipeline that scales to *any* number of
 experiments by adding a row to a spreadsheet - no new code required per test.
 Inspired by *Trustworthy Online Controlled Experiments* (Kohavi, Tang, Xu).
 
-The core idea: **AI writes the report. Code - not AI - makes the call.**
+The core idea: **AI writes the report. Code, not AI, makes the call.**
 Every ship / no-ship decision is computed deterministically in Python before
 the payload ever reaches the AI step; the AI's only job is to turn verified
 numbers into a clear, executive-ready narrative.
