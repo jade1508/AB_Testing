@@ -4,7 +4,7 @@ A fully automated A/B test analysis pipeline that scales to *any* number of
 experiments by adding a row to a spreadsheet - no new code required per test.
 Inspired by *Trustworthy Online Controlled Experiments* (Kohavi, Tang, Xu).
 
-The core idea: **AI writes the report. Code, not AI, makes the call.**
+The core idea: **AI writes the report. Code (not AI) makes the call.**
 Every ship / no-ship decision is computed deterministically in Python before
 the payload ever reaches the AI step; the AI's only job is to turn verified
 numbers into a clear, executive-ready narrative.
@@ -137,6 +137,24 @@ snapshot it was computed from.
 - **Significance test:** p = 0.0016 → statistically significant
 - **Decision:** 🟡 **DO NOT SHIP** - statistically real difference, wrong
   direction (retention dropped)
+
+Sample size (90,189 total) now matches the full public Cookie Cats
+dataset, confirming `dataset_source` in the registry points to the
+complete file.
+
+### 6.1 Portfolio Dashboard View
+
+<img width="799" height="598" alt="image" src="https://github.com/user-attachments/assets/b2d72803-ed44-411d-accc-8f0c246114cc" />
+
+Results log in Google Sheets to a filterable, long-format table (one row
+per run). The dashboard's **Experiment ID** dropdown filters the view down
+to a single experiment - the mechanism that turns this from "one test's
+result" into "a portfolio view across every test the company runs," as
+more experiments are marked `pending` and logged over time.
+
+Currently only `cookie_cats_01` has a completed run in the log, so the
+filter has one entry today - included here to document the mechanism, not
+to claim a multi-experiment portfolio yet.
 
 ## 7. What this project is - and isn't
 
