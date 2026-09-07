@@ -1,5 +1,5 @@
 """
-pipeline.py — Automated Config-Driven A/B Testing Engine
+pipeline_expansion.py — Automated Config-Driven A/B Testing Engine
 Executes via GitHub Actions (Schedule / Repository Dispatch / Manual).
 Reads pending experiments from Registry, computes statistical metrics & SRM,
 and pushes standardized JSON payloads to Make.com Webhook.
@@ -9,7 +9,6 @@ import hashlib
 import os
 import sys
 from datetime import datetime, timezone
-import numpy as np
 import pandas as pd
 import requests
 from scipy import stats
@@ -45,16 +44,19 @@ def run_ab_analysis(config: dict) -> dict:
     df = pd.read_csv(source)
     checksum = compute_checksum(df)
 
-   # Clean & split groups
+    # Clean & split groups
     groups = df[group_col].dropna().unique()
     if len(groups) != 2:
         raise ValueError(
             f"Experiment {exp_id} expects exactly 2 groups in '{group_col}', found: {groups}"
         )
 
-# Explicitly identify Control and Treatment labels
+    # Explicitly identify Control and Treatment labels
+    # FIX: removed the leftover `sorted(groups)` reassignment that used to run
+    # AFTER this block and silently overwrote control_label/treatment_label,
+    # making the explicit_control config value never actually take effect.
     explicit_control = config.get("control_label")
-    
+
     if explicit_control and explicit_control in groups:
         control_label = explicit_control
         treatment_label = [g for g in groups if g != control_label][0]
@@ -62,14 +64,11 @@ def run_ab_analysis(config: dict) -> dict:
         # Fallback to alphabetical sorting if control_label is missing or invalid
         control_label, treatment_label = sorted(groups)
         print(
-            f"⚠️ Warning: 'control_label' not specified for {exp_id}. Defaulting to alphabetical sort: Control='{control_label}', Treatment='{treatment_label}'"
+            f"⚠️ Warning: 'control_label' not specified for {exp_id}. "
+            f"Defaulting to alphabetical sort: Control='{control_label}', "
+            f"Treatment='{treatment_label}'"
         )
-    
-    control_data = df[df[group_col] == control_label][metric_col].dropna()
-    treatment_data = df[df[group_col] == treatment_label][metric_col].dropna()
 
-    # Sort groups to maintain consistency (Control vs Treatment)
-    control_label, treatment_label = sorted(groups)
     control_data = df[df[group_col] == control_label][metric_col].dropna()
     treatment_data = df[df[group_col] == treatment_label][metric_col].dropna()
 
@@ -130,6 +129,8 @@ def run_ab_analysis(config: dict) -> dict:
         "experiment_name": config.get("experiment_name", exp_id),
         "business_context": config.get("business_context", "General A/B Test"),
         "owner_email": config.get("owner_email", ""),
+        "control_label": control_label,
+        "treatment_label": treatment_label,
         "metric_name": metric_col,
         "metric_type": metric_type,
         "sample_size_total": n_total,
@@ -164,7 +165,6 @@ def main():
     print(f"📋 Reading Experiment Registry from: {registry_path}")
     registry_df = pd.read_csv(registry_path)
 
-    # Filter active/pending experiments
     pending_exps = registry_df[
         registry_df["status"].str.lower() == "pending"
     ].to_dict(orient="records")
@@ -182,18 +182,12 @@ def main():
 
         try:
             result = run_ab_analysis(config)
-
-            # Send JSON Payload to Make.com
             response = requests.post(webhook_url, json=result, timeout=15)
 
             if response.status_code in [200, 201, 204]:
-                print(
-                    f"✅ Successfully processed & pushed [{exp_id}] to Make.com Webhook."
-                )
+                print(f"✅ Successfully processed & pushed [{exp_id}] to Make.com Webhook.")
             else:
-                print(
-                    f"❌ Webhook failed for [{exp_id}] with status code: {response.status_code}"
-                )
+                print(f"❌ Webhook failed for [{exp_id}] with status code: {response.status_code}")
                 had_failure = True
 
         except Exception as e:
