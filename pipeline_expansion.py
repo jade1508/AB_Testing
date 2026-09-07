@@ -45,12 +45,28 @@ def run_ab_analysis(config: dict) -> dict:
     df = pd.read_csv(source)
     checksum = compute_checksum(df)
 
-    # Clean & split groups
+   # Clean & split groups
     groups = df[group_col].dropna().unique()
     if len(groups) != 2:
         raise ValueError(
             f"Experiment {exp_id} expects exactly 2 groups in '{group_col}', found: {groups}"
         )
+
+# Explicitly identify Control and Treatment labels
+    explicit_control = config.get("control_label")
+    
+    if explicit_control and explicit_control in groups:
+        control_label = explicit_control
+        treatment_label = [g for g in groups if g != control_label][0]
+    else:
+        # Fallback to alphabetical sorting if control_label is missing or invalid
+        control_label, treatment_label = sorted(groups)
+        print(
+            f"⚠️ Warning: 'control_label' not specified for {exp_id}. Defaulting to alphabetical sort: Control='{control_label}', Treatment='{treatment_label}'"
+        )
+    
+    control_data = df[df[group_col] == control_label][metric_col].dropna()
+    treatment_data = df[df[group_col] == treatment_label][metric_col].dropna()
 
     # Sort groups to maintain consistency (Control vs Treatment)
     control_label, treatment_label = sorted(groups)
